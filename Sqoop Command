@@ -1,0 +1,346 @@
+
+mysql -u root -p
+Enter password: password
+
+show databases;
+
+create database college;
+
+use college;
+
+show tables;
+
+---------------------------------------
+
+CREATE TABLE topten(
+   customer_id INT NOT NULL ,
+   fname VARCHAR(40) NOT NULL,
+   lname VARCHAR(40) NOT NULL,
+   age int NOT NULL,
+   profession VARCHAR(40) NOT NULL,
+   amount double NOT NULL
+   );
+-------------------------------------------
+
+CREATE TABLE student_master(
+   student_id INT NOT NULL AUTO_INCREMENT,
+   name VARCHAR(40) NOT NULL,
+   address VARCHAR(40) NOT NULL,
+   PRIMARY KEY ( student_id ));
+--------------------------------------------
+
+CREATE TABLE fy(
+   fy_id INT NOT NULL AUTO_INCREMENT,
+   student_id INT NOT NULL,
+   result double NOT NULL,
+   PRIMARY KEY (fy_id ));
+
+show tables;
++-------------------+
+| Tables_in_college |
++-------------------+
+| fy                |
+| student_master    |
+| topten            |
++-------------------+
+
+
+describe student_master;
+
++------------+-------------+------+-----+---------+----------------+
+| Field      | Type        | Null | Key | Default | Extra          |
++------------+-------------+------+-----+---------+----------------+
+| student_id | int(11)     | NO   | PRI | NULL    | auto_increment |
+| name       | varchar(40) | NO   |     | NULL    |                |
+| address    | varchar(40) | NO   |     | NULL    |                |
++------------+-------------+------+-----+---------+----------------+
+
+
+---------------------------------------------------------------------------
+INSERT INTO student_master 
+     (name, address)
+     VALUES
+    ("Sanjay", "Bangalore");
+INSERT INTO student_master 
+     (name, address)
+     VALUES
+    ("Rajiv", "Delhi");
+
+INSERT INTO student_master 
+     (name, address)
+     VALUES
+    ("Rajesh", "Chennai");
+INSERT INTO student_master 
+     (name, address)
+     VALUES
+    ("Sandeep", "Delhi");
+
+----------------------------------------------------------------------------
+
+
+INSERT INTO fy 
+     (student_id, result)
+     VALUES
+    (1, 81.90);
+INSERT INTO fy 
+     (student_id, result)
+     VALUES
+    (2, 78.90);
+
+------------------------------------------------------------------------------
+
+INSERT INTO topten
+( customer_id,fname,lname,age,profession, amount)
+Values
+(4009485,'Stuart','House',58,'Teacher',1943.85);
+
+INSERT INTO topten
+( customer_id,fname,lname,age,profession, amount)
+Values
+(4006425,'Joe','Burns',30,'Economist',1732.09);
+
+------------------------------------------------------------------------------
+
+
+
+--LIST DATABASES:-
+----------------
+sqoop list-databases --connect jdbc:mysql://localhost --username root --password password;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+--LIST TABLES in a database:-
+---------------------------
+sqoop list-tables --connect jdbc:mysql://localhost/college --username root --password password;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Import one table (with key)from mysql into HDFS:-
+------------------------------------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table student_master --target-dir /sqoop/student_master;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Add an extra record in mysql in college db using mysql terminal:-
+---------------------------------------------------------------
+INSERT INTO student_master 
+     (name, address)
+     VALUES
+    ("New", "New Place");
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH INCREMENTAL:-
+----------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table student_master --check-column student_id --incremental append --last-value  5 --target-dir /sqoop/student_master;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+COMPRESS FILE:-
+------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table student_master --target-dir /sqoop/student_master1 --compress -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Import one table (without key)from mysql into HDFS:-
+--------------------------------------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table topten --target-dir /sqoop/topten -m 1 ;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+import table to avro type or a sequence:-
+---------------------------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table topten --target-dir /sqoop/top10avro --as-avrodatafile -m 1 ;
+
+
+
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table topten --target-dir /sqoop/top10seq --as-sequencefile -m 1 ;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+create avro table and load data in hive:-
+---------------------------------------
+CREATE TABLE toptenavro
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.avro.AvroSerDe'
+STORED AS INPUTFORMAT 'org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat'
+OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.avro.AvroContainerOutputFormat'
+TBLPROPERTIES (
+    'avro.schema.literal'='{
+      "namespace": "abc",
+      "name": "top10",
+      "type": "record",
+      "fields": [ 
+{ "name":"customer_id","type":"int"}, { "name":"fname","type":"string"}, { "name":"lname","type":"string"},{ "name":"age","type":"int"},{ "name":"profession","type":"string"},{ "name":"amount","type":"double"}]
+    }');
+
+
+load data inpath '/sqoop/top10avro/part-m-00000.avro' overwrite into table toptenavro;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH WHERE CLAUSE:-
+-----------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table student_master --where 'student_id=1 or student_id=3' --target-dir /sqoop/query -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH QUERY:-
+----------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --query 'select * from student_master where $CONDITIONS and student_id=2' --target-dir /sqoop/query1 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH INNER JOINS in form of Query:-
+---------------------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --query 'select a.student_id, a.name, a.address, b.result from student_master a, fy b where $CONDITIONS and a.student_id=b.student_id' --target-dir /sqoop/query2 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH LEFT OUTER JOINS in form of Query:-
+--------------------------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --query 'select a.student_id, a.name, a.address, b.result from  student_master a left outer join fy b on a.student_id = b.student_id where $CONDITIONS' --target-dir /sqoop/query3 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH RIGHT OUTER JOINS in form of Query:-
+---------------------------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --query 'select a.student_id, a.name, a.address, b.result from  student_master a right outer join fy b on a.student_id = b.student_id where $CONDITIONS' --target-dir /sqoop/query4 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WITH COLUMN CLAUSE:-
+------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table student_master --columns "student_id,name"  --target-dir /sqoop/query5 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Import all tables from mysql into hdfs:-
+--------------------------------------
+sqoop import-all-tables --connect jdbc:mysql://localhost/college --username root --password password --warehouse-dir /sqoop/all_tables;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Import data into hive managed tables:-
+------------------------------------
+First create a database college in hive
+hive> create database college;
+hive> quit;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+sqoop import --connect jdbc:mysql://localhost/college --username  root --password password --table student_master --hive-import --hive-table college.student_profile -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+sqoop import --connect jdbc:mysql://localhost/college --username  root --password password --table fy --hive-import --hive-table college.fyresults -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+sqoop import --connect jdbc:mysql://localhost/college --username  root --password password --table student_master --columns "student_id,name" --hive-import --hive-table college.student1 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+sqoop import --connect jdbc:mysql://localhost/college --username  root --password password --table student_master --where "student_id = 1 or student_id=3" --hive-import --hive-table college.student2 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --query 'select a.student_id, a.name, a.address, b.result from student_master a, fy b where $CONDITIONS and a.student_id=b.student_id' --hive-import --hive-table college.studentjoin --target-dir /sqoop/query6 -m 1;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+sqoop export command:-
+--------------------
+
+nano /home/hduser/employee.txt
+------------------------------
+1201,satish,delhi
+1202,krishna,mumbai
+1203,amith,pune
+1204,javed,chennai
+1205,prudvi,bangalore
+
+hadoop fs -put employee.txt /sqoop
+
+---------------------------------------------------------------
+
+
+nano /home/hduser/emp1.txt
+--------------------------
+1201,satish1,delhi
+1202,krishna1,mumbai
+1206,sanjay,pune
+1207,rajiv,chennai
+1208,vijay,bangalore
+
+hadoop fs -put emp1.txt /sqoop
+
+-------------------------------------------------------------
+
+
+In MySQl
+use college;
+
+CREATE TABLE employee_master(
+   employee_id INT NOT NULL AUTO_INCREMENT,
+   name VARCHAR(40) NOT NULL,
+   address VARCHAR(40) NOT NULL,
+   PRIMARY KEY ( employee_id ));
+
+---------------------------------------------------------------
+
+sqoop export --connect jdbc:mysql://localhost/college --username root --password password --table employee_master --update-mode  allowinsert --update-key employee_id   --export-dir /sqoop/employee.txt --input-fields-terminated-by ',' ;
+
+
+mysql> select * from employee_master;
++-------------+---------+-----------+
+| employee_id | name    | address   |
++-------------+---------+-----------+
+|        1201 | satish  | delhi     |
+|        1202 | krishna | mumbai    |
+|        1203 | amith   | pune      |
+|        1204 | javed   | chennai   |
+|        1205 | prudvi  | bangalore |
++-------------+---------+-----------+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+sqoop export --connect jdbc:mysql://localhost/college --username root --password password --table employee_master --update-mode  allowinsert --update-key employee_id   --export-dir /sqoop/emp1.txt --input-fields-terminated-by ',' ;
+
+mysql> select * from employee_master;
++-------------+----------+-----------+
+| employee_id | name     | address   |
++-------------+----------+-----------+
+|        1201 | satish1  | delhi     |
+|        1202 | krishna1 | mumbai    |
+|        1203 | amith    | pune      |
+|        1204 | javed    | chennai   |
+|        1205 | prudvi   | bangalore |
+|        1206 | sanjay   | pune      |
+|        1207 | rajiv    | chennai   |
+|        1208 | vijay    | bangalore |
++-------------+----------+-----------+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
