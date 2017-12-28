@@ -344,3 +344,47 @@ mysql> select * from employee_master;
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 
+Importing Data into Hbase using Sqoop:-
+-------------------------------------
+start-all.sh
+start-hbase.sh
+hbase shell
+
+In hbase shell:-
+--------------
+
+create 'college', 'student_profile', 'fyresults'
+
+describe 'college'
+
+{NAME => 'fyresults', BLOOMFILTER => 'ROW', VERSIONS => '1', IN_MEMORY => 'false', KEEP_DELETED_CELLS => 'FALSE', DATA_BLOCK_ENCODING => 'NONE', TTL =
+> 'FOREVER', COMPRESSION => 'NONE', MIN_VERSIONS => '0', BLOCKCACHE => 'true', BLOCKSIZE => '65536', REPLICATION_SCOPE => '0'}                        
+{NAME => 'student_profile', BLOOMFILTER => 'ROW', VERSIONS => '1', IN_MEMORY => 'false', KEEP_DELETED_CELLS => 'FALSE', DATA_BLOCK_ENCODING => 'NONE',
+ TTL => 'FOREVER', COMPRESSION => 'NONE', MIN_VERSIONS => '0', BLOCKCACHE => 'true', BLOCKSIZE => '65536', REPLICATION_SCOPE => '0'}               
+
+
+In hduser Terminal:-
+------------------
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table student_master --columns "student_id,name,address" --hbase-table college --column-family student_profile --hbase-row-key student_id  -m 1;
+
+sqoop import --connect jdbc:mysql://localhost/college --username root --password password --table fy --columns "student_id,result" --hbase-table college --column-family fyresults --hbase-row-key student_id  -m 1;
+
+
+In hbase shell:-
+--------------
+scan 'college'
+
+ROW                                    COLUMN+CELL                                                                                                    
+ 1                                     column=fyresults:result, timestamp=1514469718134, value=81.9                                                   
+ 1                                     column=student_profile:address, timestamp=1514469686771, value=Bangalore                                       
+ 1                                     column=student_profile:name, timestamp=1514469686771, value=Sanjay                                             
+ 2                                     column=fyresults:result, timestamp=1514469718134, value=78.9                                                   
+ 2                                     column=student_profile:address, timestamp=1514469686771, value=Delhi                                           
+ 2                                     column=student_profile:name, timestamp=1514469686771, value=Rajiv                                              
+ 3                                     column=student_profile:address, timestamp=1514469686771, value=Chennai                                         
+ 3                                     column=student_profile:name, timestamp=1514469686771, value=Rajesh                                             
+ 4                                     column=student_profile:address, timestamp=1514469686771, value=Delhi                                           
+ 4                                     column=student_profile:name, timestamp=1514469686771, value=Sandeep                                            
+ 5                                     column=student_profile:address, timestamp=1514469686771, value=New Place                                       
+ 5                                     column=student_profile:name, timestamp=1514469686771, value=New               
+
